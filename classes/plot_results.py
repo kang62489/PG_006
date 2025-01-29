@@ -56,14 +56,22 @@ class PlotResults(QMainWindow):
         
         self.set_dfs = set_dfs
         self.keys = list(self.set_dfs.keys())
-        print(self.keys)
         self.readDataFrames()
         
         if len(self.keys) == 2:
             widget_all = self.plot_all_on_one()
             self.layout_stackedDisp.addWidget(widget_all)
+            self.plot_each_group()
         
-        self.plot_each_group()
+        elif len(self.keys) == 4:
+            self.plot_each_group()
+            
+        elif len(self.keys) == 3:
+            self.plot_peaks()
+            
+        else:
+            pass
+
         self.layout_main.addLayout(self.layout_stackedDisp)
         
         # A widget to hold everything
@@ -107,6 +115,10 @@ class PlotResults(QMainWindow):
         self.df_loaded = []
         for key in self.keys:
             self.df_loaded.append(self.set_dfs[key])
+        
+        self.df_columns =[]    
+        for df in self.df_loaded:
+            self.df_columns.append(df.columns.tolist())
     
     def plot_all_on_one(self):
         subWindow_1_all = MplCanvas()
@@ -115,9 +127,9 @@ class PlotResults(QMainWindow):
         layout_leftWindow = QVBoxLayout()
         layout_rightWindow = QVBoxLayout()
         
-        for col_1, col_2 in zip(self.df_loaded[0].columns.tolist()[1:], self.df_loaded[1].columns.tolist()[1:]):
-            self.df_loaded[0].plot(ax=subWindow_1_all.axes, x='Time', y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
-            self.df_loaded[1].plot(ax=subWindow_2_all.axes, x='Time', y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+        for col_1, col_2 in zip(self.df_columns[0][1:], self.df_columns[1][1:]):
+            self.df_loaded[0].plot(ax=subWindow_1_all.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+            self.df_loaded[1].plot(ax=subWindow_2_all.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
             
         toolbar_1_all = NavigationToolbar(subWindow_1_all, self)
         toolbar_2_all = NavigationToolbar(subWindow_2_all, self)
@@ -136,17 +148,17 @@ class PlotResults(QMainWindow):
     
     def plot_each_group(self):
         if len(self.keys) == 2:
-            for col_1, col_2 in zip(self.df_loaded[0].columns.tolist()[1:], self.df_loaded[1].columns.tolist()[1:]):
+            for col_1, col_2 in zip(self.df_columns[0][1:], self.df_columns[1][1:]):
                 layout_subWindows = QHBoxLayout()
                 layout_leftWindow = QVBoxLayout()
                 layout_rightWindow = QVBoxLayout()
                 
                 subWindow_1 = MplCanvas()
-                self.df_loaded[0].plot(ax=subWindow_1.axes, x='Time', y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
                 toolbar_1 = NavigationToolbar(subWindow_1, self)
                 
                 subWindow_2 = MplCanvas()
-                self.df_loaded[1].plot(ax=subWindow_2.axes, x='Time', y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
                 toolbar_2 = NavigationToolbar(subWindow_2, self)
                 
                 layout_leftWindow.addWidget(toolbar_1)
@@ -162,19 +174,19 @@ class PlotResults(QMainWindow):
                 self.layout_stackedDisp.addWidget(widget_holding_subWindows)
         
         elif len(self.keys) == 4:
-            for col_1, col_2 in zip(self.df_loaded[0].columns.tolist()[1:], self.df_loaded[1].columns.tolist()[1:]):
+            for col_1, col_2 in zip(self.df_columns[0][1:], self.df_columns[1][1:]):
                 layout_subWindows = QHBoxLayout()
                 layout_leftWindow = QVBoxLayout()
                 layout_rightWindow = QVBoxLayout()
                 
                 subWindow_1 = MplCanvas()
-                self.df_loaded[0].plot(ax=subWindow_1.axes, x='Time', y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
-                self.df_loaded[2].plot(ax=subWindow_1.axes, x='Time', y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+                self.df_loaded[2].plot(ax=subWindow_1.axes, x=self.df_columns[2][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
                 toolbar_1 = NavigationToolbar(subWindow_1, self)
                 
                 subWindow_2 = MplCanvas()
-                self.df_loaded[1].plot(ax=subWindow_2.axes, x='Time', y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
-                self.df_loaded[3].plot(ax=subWindow_2.axes, x='Time', y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+                self.df_loaded[3].plot(ax=subWindow_2.axes, x=self.df_columns[3][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
                 toolbar_2 = NavigationToolbar(subWindow_2, self)
                 
                 layout_leftWindow.addWidget(toolbar_1)
@@ -190,3 +202,33 @@ class PlotResults(QMainWindow):
                 self.layout_stackedDisp.addWidget(widget_holding_subWindows)
         else:
             pass
+    
+    def plot_peaks(self):
+        row = 0
+        for col_1, col_2 in zip(self.df_columns[0][1:], self.df_columns[1][1:]):
+                layout_subWindows = QHBoxLayout()
+                layout_leftWindow = QVBoxLayout()
+                layout_rightWindow = QVBoxLayout()
+                
+                subWindow_1 = MplCanvas()
+                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+                self.df_loaded[2].iloc[row:row+1, :].plot(ax=subWindow_1.axes, x=self.df_columns[2][0], y=self.df_columns[2][1], marker='x', markersize=10, color='r')
+                toolbar_1 = NavigationToolbar(subWindow_1, self)
+                
+                subWindow_2 = MplCanvas()
+                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+                self.df_loaded[2].iloc[row:row+1, :].plot(ax=subWindow_2.axes, x=self.df_columns[2][2], y=self.df_columns[2][3], marker='x', markersize=10, color='r')
+                toolbar_2 = NavigationToolbar(subWindow_2, self)
+                
+                layout_leftWindow.addWidget(toolbar_1)
+                layout_leftWindow.addWidget(subWindow_1)
+                layout_rightWindow.addWidget(toolbar_2)
+                layout_rightWindow.addWidget(subWindow_2)
+                
+                layout_subWindows.addLayout(layout_leftWindow)
+                layout_subWindows.addLayout(layout_rightWindow)
+                
+                widget_holding_subWindows = QWidget()
+                widget_holding_subWindows.setLayout(layout_subWindows)
+                self.layout_stackedDisp.addWidget(widget_holding_subWindows)
+                row += 1
