@@ -1,5 +1,5 @@
 ## Author: Kang
-## Last Update: 2025-Jan-27
+## Last Update: 2025-Jan-29
 ## Purpose: To analyze temporal data of imaging data
 
 ## Modules
@@ -15,8 +15,8 @@ from sklearn.metrics import r2_score
 from pathlib import Path
 from rich import print
 from tabulate import tabulate
-from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout
-from classes.plotting import PlotWindow
+from PySide6.QtWidgets import QApplication
+from classes.plot_fitting import PlotFitting
 
 ## Set directories for import and export images
 data_path = Path(__file__).parent / "Outputs"
@@ -73,13 +73,13 @@ for file_ACSF, file_NEO in zip(lst_files_ACSF, lst_files_NEO):
 # fitting model: B-Spline
 
 # Prepare empty dataframes for saving fitted data
-df_ACSF_fitted = pd.DataFrame()
-df_NEO_fitted = pd.DataFrame()
+fitted_ACSF = pd.DataFrame()
+fitted_NEO = pd.DataFrame()
 df_monoExp_coef = pd.DataFrame()
 
 # Insert time seqence for easily ploting in the output excel file_ACSF
-df_ACSF_fitted['Time'] = time
-df_NEO_fitted['Time'] = time
+fitted_ACSF['Time'] = time
+fitted_NEO['Time'] = time
 
 
 # Masking the frames of ONSET of the puffing
@@ -106,27 +106,27 @@ for col_ACSF, col_NEO in zip(raw_ACSF.columns[1:], raw_NEO.columns[1:]):
     baseline_2 = interp.BSpline(*popt_2, extrapolate=True)
     print(f"{col_NEO} R-Square:", r2_score(ydata_2, baseline_2(xdata)))
 
-    df_ACSF_fitted[col_ACSF] = baseline_1(time)
-    df_NEO_fitted[col_NEO] = baseline_2(time)
+    fitted_ACSF[col_ACSF] = baseline_1(time)
+    fitted_NEO[col_NEO] = baseline_2(time)
     print("\nDATA ", col_ACSF, "and ", col_NEO, "are fitted")
     print("============================================================")
 
 with pd.ExcelWriter(os.path.join(export_path,'analysis.xlsx')) as f:
-    raw_ACSF.to_excel(f,sheet_name="raw_df_none",index=False)
-    raw_NEO.to_excel(f,sheet_name='raw_df_NEO',index=False)
+    raw_ACSF.to_excel(f,sheet_name="raw_ACSF",index=False)
+    raw_NEO.to_excel(f,sheet_name='raw_NEO',index=False)
     
-    df_ACSF_fitted.to_excel(f,sheet_name="df_ACSF_fitted",index=False)
-    df_NEO_fitted.to_excel(f,sheet_name="df_NEO_fitted",index=False)
+    fitted_ACSF.to_excel(f,sheet_name="fitted_ACSF",index=False)
+    fitted_NEO.to_excel(f,sheet_name="fitted_NEO",index=False)
 
 set_dfs = {}
 set_dfs["raw_ACSF"] = raw_ACSF.to_dict()
 set_dfs["raw_NEO"] = raw_NEO.to_dict()
-set_dfs["df_ACSF_fitted"] = df_ACSF_fitted.to_dict()
-set_dfs["df_NEO_fitted"] = df_NEO_fitted.to_dict()
+set_dfs["fitted_ACSF"] = fitted_ACSF.to_dict()
+set_dfs["fitted_NEO"] = fitted_NEO.to_dict()
 
 # Plotting
 app = QApplication([])
-window = PlotWindow(set_dfs, title_left="ACh puffed in Normal ACSF solution", title_right="ACh puffed in NEO presented ACSF solution")
+window = PlotFitting(set_dfs, title_left="ACh puffed in Normal ACSF solution", title_right="ACh puffed in NEO presented ACSF solution")
 
 window.show()
 app.exec()

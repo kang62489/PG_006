@@ -20,15 +20,17 @@ matplotlib.use('QtAgg')
 
 class MplCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
+        fig = Figure(figsize=(width, height), dpi=dpi, tight_layout=True)
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
         
-class PlotWindow(QMainWindow):
-    def __init__(self, set_dfs, title_left="title_1", title_right="title_2"):
+class PlotResults(QMainWindow):
+    def __init__(self, set_dfs, title_left="title_1", title_right="title_2", ylim=None):
         super().__init__()
         self.title_left = title_left
         self.title_right = title_right
+        self.ylim = ylim
+        
         self.layout_main = QVBoxLayout()
         self.layout_ctrls = QHBoxLayout()
         self.layout_ctrls.setAlignment(Qt.AlignCenter)
@@ -50,34 +52,58 @@ class PlotWindow(QMainWindow):
         self.layout_ctrls.addWidget(self.btn_left)
         self.layout_ctrls.addWidget(self.le_pageDisp)
         self.layout_ctrls.addWidget(self.btn_right)
+        self.layout_main.addLayout(self.layout_ctrls)
         
         # sc.axes.plot([0,1,2,3,4], [10,1,20,3,40])
         self.set_dfs = set_dfs
         keys = list(self.set_dfs.keys())
         
         
-        self.raw_ACSF = pd.DataFrame(set_dfs[keys[0]])
-        self.raw_NEO = pd.DataFrame(set_dfs[keys[1]])
-        self.raw_ACSF_fitted = pd.DataFrame(set_dfs[keys[2]])
-        self.raw_NEO_fitted = pd.DataFrame(set_dfs[keys[3]])
+        self.dfF0_ACSF = pd.DataFrame(set_dfs[keys[0]])
+        self.dfF0_NEO = pd.DataFrame(set_dfs[keys[1]])
 
-        ACSF_columns = self.raw_ACSF.columns.tolist()
-        NEO_columns = self.raw_NEO.columns.tolist()
+        ACSF_columns = self.dfF0_ACSF.columns.tolist()
+        NEO_columns = self.dfF0_NEO.columns.tolist()
         
-        self.layout_main.addLayout(self.layout_ctrls)
+        
+        subWindow_1_all = MplCanvas()
+        subWindow_2_all = MplCanvas()
+        layout_subWindows = QHBoxLayout()
+        layout_leftWindow = QVBoxLayout()
+        layout_rightWindow = QVBoxLayout()
+        
+        for col_1, col_2 in zip(ACSF_columns[1:], NEO_columns[1:]):
+            
+            self.dfF0_ACSF.plot(ax=subWindow_1_all.axes, x='Time', y=col_1, kind='line', ylim=ylim, title=self.title_left)
+            
+            self.dfF0_NEO.plot(ax=subWindow_2_all.axes, x='Time', y=col_2, kind='line', ylim=ylim, title=self.title_right)
+            
+        toolbar_1_all = NavigationToolbar(subWindow_1_all, self)
+        toolbar_2_all = NavigationToolbar(subWindow_2_all, self)
+        layout_leftWindow.addWidget(toolbar_1_all)
+        layout_leftWindow.addWidget(subWindow_1_all)
+        layout_rightWindow.addWidget(toolbar_2_all)
+        layout_rightWindow.addWidget(subWindow_2_all)
+        
+        layout_subWindows = QHBoxLayout()
+        layout_subWindows.addLayout(layout_leftWindow)
+        layout_subWindows.addLayout(layout_rightWindow)
+        
+        widget_all = QWidget()
+        widget_all.setLayout(layout_subWindows)
+        self.layout_stackedDisp.addWidget(widget_all)
+        
         for col_1, col_2 in zip(ACSF_columns[1:], NEO_columns[1:]):
             layout_subWindows = QHBoxLayout()
             layout_leftWindow = QVBoxLayout()
             layout_rightWindow = QVBoxLayout()
             
             subWindow_1 = MplCanvas()
-            self.raw_ACSF.plot(ax=subWindow_1.axes, x='Time', y=col_1, kind='line', title=self.title_left)
-            self.raw_ACSF_fitted.plot(ax=subWindow_1.axes, x='Time', y=col_1, kind='line')
+            self.dfF0_ACSF.plot(ax=subWindow_1.axes, x='Time', y=col_1, kind='line', ylim=ylim, title=self.title_left)
             toolbar_1 = NavigationToolbar(subWindow_1, self)
             
             subWindow_2 = MplCanvas()
-            self.raw_NEO.plot(ax=subWindow_2.axes, x='Time', y=col_2, kind='line', title=self.title_right)
-            self.raw_NEO_fitted.plot(ax=subWindow_2.axes, x='Time', y=col_2, kind='line')
+            self.dfF0_NEO.plot(ax=subWindow_2.axes, x='Time', y=col_2, kind='line', ylim=ylim, title=self.title_right)
             toolbar_2 = NavigationToolbar(subWindow_2, self)
             
             layout_leftWindow.addWidget(toolbar_1)
