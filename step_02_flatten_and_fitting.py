@@ -16,7 +16,7 @@ from pathlib import Path
 from rich import print
 from tabulate import tabulate
 from PySide6.QtWidgets import QApplication
-from classes.plot_fitting import PlotFitting
+from classes.plot_results import PlotResults
 
 ## Set directories for import and export images
 data_path = Path(__file__).parent / "Outputs"
@@ -119,14 +119,14 @@ with pd.ExcelWriter(os.path.join(export_path,'analysis.xlsx')) as f:
     fitted_NEO.to_excel(f,sheet_name="fitted_NEO",index=False)
 
 set_dfs = {}
-set_dfs["raw_ACSF"] = raw_ACSF.to_dict()
-set_dfs["raw_NEO"] = raw_NEO.to_dict()
-set_dfs["fitted_ACSF"] = fitted_ACSF.to_dict()
-set_dfs["fitted_NEO"] = fitted_NEO.to_dict()
+set_dfs["raw_ACSF"] = raw_ACSF
+set_dfs["raw_NEO"] = raw_NEO
+set_dfs["fitted_ACSF"] = fitted_ACSF
+set_dfs["fitted_NEO"] = fitted_NEO
 
 # Plotting
-app = QApplication([])
-window = PlotFitting(set_dfs, title_left="ACh puffed in Normal ACSF solution", title_right="ACh puffed in NEO presented ACSF solution")
+app = QApplication()
+window = PlotResults(set_dfs, title_left="ACh puffed in Normal ACSF solution", title_right="ACh puffed in NEO presented ACSF solution")
 
 window.show()
 app.exec()
