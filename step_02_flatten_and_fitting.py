@@ -20,7 +20,7 @@ from classes.plot_results import PlotResults
 
 ## Set directories for import and export images
 data_path = Path(__file__).parent / "Outputs"
-export_path = Path(__file__).parent / "Analysis"
+export_path = Path(__file__).parent / "Outputs"
 if not os.path.exists(export_path):
     os.mkdir(export_path)
 
