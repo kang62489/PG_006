@@ -25,10 +25,12 @@ class MplCanvas(FigureCanvasQTAgg):
         super().__init__(fig)
         
 class PlotResults(QMainWindow):
-    def __init__(self, set_dfs, title_left="title_1", title_right="title_2", ylim=None):
+    def __init__(self, set_dfs, title_left="title_1", title_right="title_2", ylim=None, xlabel = 'xlabel', ylabel='ylabel'):
         super().__init__()
         self.title_left = title_left
         self.title_right = title_right
+        self.xlabel = xlabel
+        self.ylabel = ylabel
         self.ylim = ylim
         
         self.layout_main = QVBoxLayout()
@@ -128,8 +130,10 @@ class PlotResults(QMainWindow):
         layout_rightWindow = QVBoxLayout()
         
         for col_1, col_2 in zip(self.df_columns[0][1:], self.df_columns[1][1:]):
-            self.df_loaded[0].plot(ax=subWindow_1_all.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
-            self.df_loaded[1].plot(ax=subWindow_2_all.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+            self.df_loaded[0].plot(ax=subWindow_1_all.axes, x=self.df_columns[0][0], y=col_1, kind='line',
+                                   ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_left, grid=True)
+            self.df_loaded[1].plot(ax=subWindow_2_all.axes, x=self.df_columns[1][0], y=col_2, kind='line',
+                                   ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_right, grid=True)
             
         toolbar_1_all = NavigationToolbar(subWindow_1_all, self)
         toolbar_2_all = NavigationToolbar(subWindow_2_all, self)
@@ -154,11 +158,13 @@ class PlotResults(QMainWindow):
                 layout_rightWindow = QVBoxLayout()
                 
                 subWindow_1 = MplCanvas()
-                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_left, grid=True)
                 toolbar_1 = NavigationToolbar(subWindow_1, self)
                 
                 subWindow_2 = MplCanvas()
-                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_right, grid=True)
                 toolbar_2 = NavigationToolbar(subWindow_2, self)
                 
                 layout_leftWindow.addWidget(toolbar_1)

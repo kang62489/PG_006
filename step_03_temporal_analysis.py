@@ -58,9 +58,13 @@ if os.path.exists(xlsx_filepath):
     count = 1
     SNseries = ""
     for raw_acsf_col, fitted_acsf_col in zip(raw_ACSF.columns[1:], fitted_ACSF.columns[1:]):
-        df_f0_percent = np.array([100*(i-j)/j for i, j in zip(raw_ACSF[raw_acsf_col], fitted_ACSF[fitted_acsf_col])],dtype=float)
-        df_f0_ratio = np.array([(i-j) for i, j in zip(raw_ACSF[raw_acsf_col], fitted_ACSF[fitted_acsf_col])],dtype=float)
-        df_f0_ratio_zscored = stats.zscore(df_f0_ratio)
+        f = np.array([(i/j) for i, j in zip(raw_ACSF[raw_acsf_col], fitted_ACSF[fitted_acsf_col])],dtype=float)
+        f_0 = np.mean(f[50:101])
+        df_f0_percent = np.array([100*(i-f_0)/f_0 for i in f],dtype=float)
+        df_f0_ratio = np.array([(i-f_0) for i in f],dtype=float)
+        df_f0_ratio_mean = np.mean(df_f0_ratio[50:101])
+        df_f0_ratio_std = np.std(df_f0_ratio[50:101], ddof=1)
+        df_f0_ratio_zscored = (df_f0_ratio-df_f0_ratio_mean)/df_f0_ratio_std
         
         next_serial_number = int(raw_acsf_col.split('-')[-1])+1
         
@@ -96,9 +100,13 @@ if os.path.exists(xlsx_filepath):
     count = 1
     SNseries = ""
     for raw_NEO_col, fitted_NEO_col in zip(raw_NEO.columns[1:], fitted_NEO.columns[1:]):
-        df_f0_percent = np.array([100*(i-j)/j for i, j in zip(raw_NEO[raw_NEO_col], fitted_NEO[fitted_NEO_col])],dtype=float)
-        df_f0_ratio = np.array([(i-j) for i, j in zip(raw_NEO[raw_NEO_col], fitted_NEO[fitted_NEO_col])],dtype=float)
-        df_f0_ratio_zscored = stats.zscore(df_f0_ratio)
+        f = np.array([(i/j) for i, j in zip(raw_NEO[raw_NEO_col], fitted_NEO[fitted_NEO_col])],dtype=float)
+        f_0 = np.mean(f[50:101])
+        df_f0_percent = np.array([100*(i-f_0)/f_0 for i in f],dtype=float)
+        df_f0_ratio = np.array([(i-f_0) for i in f],dtype=float)
+        df_f0_ratio_mean = np.mean(df_f0_ratio[50:101])
+        df_f0_ratio_std = np.std(df_f0_ratio[50:101], ddof=1)
+        df_f0_ratio_zscored = (df_f0_ratio-df_f0_ratio_mean)/df_f0_ratio_std
 
         next_serial_number = int(raw_NEO_col.split('-')[1])+1
         
@@ -163,10 +171,12 @@ if os.path.exists(xlsx_filepath):
                     "dfF0_NEO_cal_zscores": dfF0_NEO_calibrated_zscores}    
         
     # Plot the data
-    results_0 = PlotResults(set_dfF0, title_left=r"ACSF_$\Delta F/F_0$", title_right=r"NEO_$\Delta F/F_0$", ylim=[-0.5, 2])
+    results_0 = PlotResults(set_dfF0, title_left=r"ACSF_100%$\times \Delta F/F_0$", title_right=r"NEO_100%$\times \Delta F/F_0$", 
+                            ylim=[-0.5, 2], xlabel = 'time (sec.)', ylabel=r"$\Delta$"+"F/"+r"$F_0$"+"(%) (A.U.)")
     results_0.show()
 
-    results_1 = PlotResults(set_cal_zscores, title_left=r"ACSF_$\Delta F/F_0$ z-scored", title_right=r"NEO_$\Delta F/F_0$ z-scored", ylim=[-4, 8])
+    results_1 = PlotResults(set_cal_zscores, title_left=r"ACSF_Z-scores of $\Delta F/F_0$(Ratio)", title_right=r"NEO_Z-scores of $\Delta F/F_0$(Ratio)",
+                            ylim=[-4, 8], xlabel='time (sec.)', ylabel='Z-scores (A.U.)')
     results_1.show()
     app.exec_()
 else:
