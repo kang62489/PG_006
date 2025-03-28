@@ -1,10 +1,11 @@
 ## Author: Kang
 ## Last Update: 2025-Jan-20
-## Usage: A class for build a dialog for confimation
+## Usage: A class for build a dialog of yes/no question
 
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
-class Confirm(QDialog):
+class INQUIRY(QDialog):
+    """Generate a yes/no dialog"""
     def __init__(self, title="Dialog", msg="Question"):
         super().__init__()
         self.setWindowTitle(title)

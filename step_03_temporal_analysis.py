@@ -164,13 +164,13 @@ if os.path.exists(xlsx_filepath):
         dfF0_NEO_calibrated_zscores.to_excel(f,sheet_name="dfF0_NEO_cal_zscores",index=False)
         
 
+    # Plot the data
     set_dfF0 = {"dfF0_ACSF": dfF0_ACSF,
                 "dfF0_NEO": dfF0_NEO}
 
     set_cal_zscores = {"dfF0_ACSF_cal_zscores": dfF0_ACSF_calibrated_zscores,
                     "dfF0_NEO_cal_zscores": dfF0_NEO_calibrated_zscores}    
         
-    # Plot the data
     results_0 = PlotResults(set_dfF0, title_left=r"ACSF_100%$\times \Delta F/F_0$", title_right=r"NEO_100%$\times \Delta F/F_0$", 
                             ylim=[-0.5, 2], xlabel = 'time (sec.)', ylabel=r"$\Delta$"+"F/"+r"$F_0$"+"(%) (A.U.)")
     results_0.show()
