@@ -1,5 +1,5 @@
 ## Author: Kang
-## Last Update: 2024-Jan-30
+## Last Update: 2024-Mar-28
 ## Purpose: To calculate deltaF/F0 and plot the data based on the output excel file
 ## of step_02_flatten_and_fitting.py
 
@@ -13,171 +13,181 @@ from tabulate import tabulate
 from rich import print
 
 from PySide6.QtWidgets import QApplication
-from classes.dialog_getPath import GetPath
+from classes.dialog_GetPath import GetPath
 from classes.plot_results import PlotResults
 
 # Set event handler
 app = QApplication()
 
-# Get the path of the excel file
-xlsx_filepath = GetPath(title="Please select the processed data of a xlsx file.",
+# Get the path of the excel file analysis.xlsx
+excelfile_analysis = GetPath(title="Please select the processed data of a xlsx file.",
                         filemode="file",
                         filetype="excel")
-xlsx_filepath = xlsx_filepath.get_path()
+analysis_xlsx_path = excelfile_analysis.get_path()
 
-if os.path.exists(xlsx_filepath):
+def readDataFromExcel():
+    if not os.path.exists(analysis_xlsx_path):
+        print("No excel file is chosen. Task cancelled")
+        return [], [], [], []
+
     # Read each tab as a dataframe of pandas
-    raw_ACSF = pd.read_excel(xlsx_filepath, sheet_name="raw_ACSF")
-    raw_NEO = pd.read_excel(xlsx_filepath, sheet_name="raw_NEO")
-    fitted_ACSF = pd.read_excel(xlsx_filepath, sheet_name="fitted_ACSF")
-    fitted_NEO = pd.read_excel(xlsx_filepath, sheet_name="fitted_NEO")
+    raw_ACSF = pd.read_excel(analysis_xlsx_path, sheet_name="raw_ACSF")
+    raw_NEO = pd.read_excel(analysis_xlsx_path, sheet_name="raw_NEO")
+    fitted_ACSF = pd.read_excel(analysis_xlsx_path, sheet_name="fitted_ACSF")
+    fitted_NEO = pd.read_excel(analysis_xlsx_path, sheet_name="fitted_NEO")
+    return raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO
 
-
-    # Set empty dataframes for saving calculated data
+def calcute_DeltaF_f0(raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO):
+    # Check if any of the inputs is empty
+    if any(df.empty for df in [raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO]):
+        print("One or more input DataFrames is empty. Cannot proceed with calculations.")
+        return [], [], [], []
+    
     dfF0_ACSF = pd.DataFrame()
     dfF0_ACSF['Time'] = raw_ACSF["Time"]
-
-    dfF0_NEO = pd.DataFrame()
-    dfF0_NEO['Time'] = raw_NEO["Time"]
 
     dfF0_ACSF_zscores = pd.DataFrame()
     dfF0_ACSF_zscores['Time'] = raw_ACSF["Time"]
 
-    dfF0_NEO_zscores = pd.DataFrame()
-    dfF0_NEO_zscores['Time'] = raw_NEO["Time"]
-
-    dfF0_ACSF_calibrated_zscores = pd.DataFrame()
-    dfF0_ACSF_calibrated_zscores['Time'] = raw_ACSF["Time"]
-
-    dfF0_NEO_calibrated_zscores = pd.DataFrame()
-    dfF0_NEO_calibrated_zscores['Time'] = raw_NEO["Time"]
-
     # Set empty arrays for averaging
     accum_ACSF_0 = np.zeros_like(dfF0_ACSF["Time"])
     accum_ACSF_1 = np.zeros_like(dfF0_ACSF["Time"])
-    count = 1
-    SNseries = ""
+    count_ACSF_SNs = 1
+    Averaged_ACSF_SN = "-"
+    
     for raw_acsf_col, fitted_acsf_col in zip(raw_ACSF.columns[1:], fitted_ACSF.columns[1:]):
-        f = np.array([(i/j) for i, j in zip(raw_ACSF[raw_acsf_col], fitted_ACSF[fitted_acsf_col])],dtype=float)
-        f_0 = np.mean(f[50:101])
-        df_f0_percent = np.array([100*(i-f_0)/f_0 for i in f],dtype=float)
-        df_f0_ratio = np.array([(i-f_0) for i in f],dtype=float)
-        df_f0_ratio_mean = np.mean(df_f0_ratio[50:101])
-        df_f0_ratio_std = np.std(df_f0_ratio[50:101], ddof=1)
-        df_f0_ratio_zscored = (df_f0_ratio-df_f0_ratio_mean)/df_f0_ratio_std
+        # Remove trend by division (raw/fitted)
+        F_ACSF_detrended = np.array([(i/j) for i, j in zip(raw_ACSF[raw_acsf_col], fitted_ACSF[fitted_acsf_col])],dtype=float)
         
+        # Calculate f0 (previous 90 frames 4.5 sec)
+        f0_ACSF = np.mean(F_ACSF_detrended[0:91])
+        
+        # Calculate DeltaF/f0 (in percent)
+        DeltaF_f0_ACSF_percent = np.array([100*(i-f0_ACSF)/f0_ACSF for i in F_ACSF_detrended],dtype=float)
+        
+        # Calculate DeltaF/f0 (in z-score)
+        baseline_mean_ACSF = f0_ACSF
+        baseline_std_ACSF = np.std(F_ACSF_detrended[0:91], ddof=1)
+        DeltaF_f0_ACSF_zscore = np.array([(i-baseline_mean_ACSF)/baseline_std_ACSF for i in F_ACSF_detrended],dtype=float)
+        
+        # For averaging the results of DeltaF/f0 from the same date (continuous serial numbers)
         next_serial_number = int(raw_acsf_col.split('-')[-1])+1
         
-    # For averaging the results of dF/F0 from the same trial of the date (serial number should be continuous)
         if raw_acsf_col.replace(raw_acsf_col.split('-')[-1], f'{next_serial_number:04}') in raw_ACSF.columns[1:]:
-            data_temp = df_f0_percent
-            data_temp_2 = df_f0_ratio_zscored
-            
-            SNseries = SNseries + "-" +str(int(raw_acsf_col.split("-")[1]))
-            accum_ACSF_0 = accum_ACSF_0 + df_f0_percent
-            accum_ACSF_1 = accum_ACSF_1 + df_f0_ratio_zscored
-            count += 1
-        
+            Averaged_ACSF_SN = Averaged_ACSF_SN + " " +str(int(raw_acsf_col.split("-")[1]))
+            accum_ACSF_0 = accum_ACSF_0 + DeltaF_f0_ACSF_percent
+            accum_ACSF_1 = accum_ACSF_1 + DeltaF_f0_ACSF_zscore
+            count_ACSF_SNs += 1
         else:
-            if count == 1:
-                dfF0_ACSF["cal_"+raw_acsf_col]=df_f0_percent
-                # dfF0_ACSF_zscores["cal_"+raw_acsf_col]=stats.zscore(df_f0_percent)
-                dfF0_ACSF_calibrated_zscores["zscored_"+raw_acsf_col]=df_f0_ratio_zscored
+            if count_ACSF_SNs == 1:
+                dfF0_ACSF["pt_"+raw_acsf_col]=DeltaF_f0_ACSF_percent
+                dfF0_ACSF_zscores["zs_"+raw_acsf_col]=DeltaF_f0_ACSF_zscore
             else:
-                SNseries = SNseries + "-" +str(int(raw_acsf_col.split("-")[1]))
-                dfF0_ACSF["avg_"+raw_acsf_col.replace("_"+raw_acsf_col.split("-")[1],"")+SNseries]= accum_ACSF_0/count
-                # dfF0_ACSF_zscores["avg_zscored_"+raw_acsf_col.replace("_"+raw_acsf_col.split("-")[1],"")+SNseries]=stats.zscore(accum_ACSF_0/count)
-                dfF0_ACSF_calibrated_zscores["avg_zscored_"+raw_acsf_col.replace("_"+raw_acsf_col.split("-")[1],"")+SNseries]=accum_ACSF_1/count
+                Averaged_ACSF_SN = Averaged_ACSF_SN + " " +str(int(raw_acsf_col.split("-")[1]))
+                accum_ACSF_0 = accum_ACSF_0 + DeltaF_f0_ACSF_percent
+                accum_ACSF_1 = accum_ACSF_1 + DeltaF_f0_ACSF_zscore
+                
+                dfF0_ACSF["avg_pt_"+raw_acsf_col.replace("-"+raw_acsf_col.split("-")[1],"")+Averaged_ACSF_SN]= accum_ACSF_0/count_ACSF_SNs
+                dfF0_ACSF_zscores["avg_zs_"+raw_acsf_col.replace("-"+raw_acsf_col.split("-")[1],"")+Averaged_ACSF_SN]=accum_ACSF_1/count_ACSF_SNs
                 
                 # Reset counter and accumulators
-                count = 1
+                count_ACSF_SNs = 1
                 accum_ACSF_0 = np.zeros_like(dfF0_ACSF["Time"])
                 accum_ACSF_1 = np.zeros_like(dfF0_ACSF["Time"])
-                SNseries = ""
+                Averaged_ACSF_SN = ""
 
+    dfF0_NEO = pd.DataFrame()
+    dfF0_NEO['Time'] = raw_NEO["Time"]
+    
+    dfF0_NEO_zscores = pd.DataFrame()
+    dfF0_NEO_zscores['Time'] = raw_NEO["Time"]
+    
     accum_NEO_0 = np.zeros_like(dfF0_NEO["Time"])
     accum_NEO_1 = np.zeros_like(dfF0_NEO["Time"])
-    count = 1
-    SNseries = ""
+    count_NEO_SNs = 1
+    Averaged_NEO_SN = "-"
+    
     for raw_NEO_col, fitted_NEO_col in zip(raw_NEO.columns[1:], fitted_NEO.columns[1:]):
-        f = np.array([(i/j) for i, j in zip(raw_NEO[raw_NEO_col], fitted_NEO[fitted_NEO_col])],dtype=float)
-        f_0 = np.mean(f[50:101])
-        df_f0_percent = np.array([100*(i-f_0)/f_0 for i in f],dtype=float)
-        df_f0_ratio = np.array([(i-f_0) for i in f],dtype=float)
-        df_f0_ratio_mean = np.mean(df_f0_ratio[50:101])
-        df_f0_ratio_std = np.std(df_f0_ratio[50:101], ddof=1)
-        df_f0_ratio_zscored = (df_f0_ratio-df_f0_ratio_mean)/df_f0_ratio_std
+        # Remove trend by division (raw/fitted)
+        F_NEO_detrended = np.array([(i/j) for i, j in zip(raw_NEO[raw_NEO_col], fitted_NEO[fitted_NEO_col])],dtype=float)
+        
+        # Calculate f0 (previous 90 frames 4.5 sec)
+        f0_NEO = np.mean(F_NEO_detrended[0:91])
+        
+        # Calculate DeltaF/F0 (in percent)
+        DeltaF_f0_NEO_percent = np.array([100*(i-f0_NEO)/f0_NEO for i in F_NEO_detrended],dtype=float)
+        
+        # Calculate DeltaF/F0 (in z-score)
+        baseline_mean_NEO = f0_NEO
+        basline_std_NEO = np.std(F_NEO_detrended[0:91], ddof=1)
+        DeltaF_f0_NEO_zscore = np.array([(i-baseline_mean_NEO)/basline_std_NEO for i in F_NEO_detrended],dtype=float)
 
+        # For averaging the results of DeltaF/f0 from the same date (continuous serial numbers)
         next_serial_number = int(raw_NEO_col.split('-')[1])+1
         
         if raw_NEO_col.replace(raw_NEO_col.split('-')[1], f'{next_serial_number:04}') in raw_NEO.columns[1:]:
-            SNseries = SNseries + "-" +str(int(raw_NEO_col.split("-")[1]))
-            accum_NEO_0 = accum_NEO_0 + df_f0_percent
-            accum_NEO_1 = accum_NEO_1 + df_f0_ratio
-            count += 1
+            Averaged_NEO_SN = Averaged_NEO_SN + " " +str(int(raw_NEO_col.split("-")[1]))
+            accum_NEO_0 = accum_NEO_0 + DeltaF_f0_NEO_percent
+            accum_NEO_1 = accum_NEO_1 + DeltaF_f0_NEO_zscore
+            count_NEO_SNs += 1
         
         else:
-            if count == 1:
-                dfF0_NEO["cal_"+raw_NEO_col]=df_f0_percent
-                # dfF0_NEO_zscores["cal_"+raw_NEO_col]=stats.zscore(df_f0_percent)
-                dfF0_NEO_calibrated_zscores["zscored_"+raw_NEO_col]=df_f0_ratio_zscored
+            if count_NEO_SNs == 1:
+                dfF0_NEO['pt_'+raw_NEO_col]=DeltaF_f0_NEO_percent
+                dfF0_NEO_zscores["zs_"+raw_NEO_col]=DeltaF_f0_NEO_zscore
             else:
-                SNseries = SNseries + "-" +str(int(raw_NEO_col.split("-")[1]))
-                dfF0_NEO["avg_"+raw_NEO_col.replace("_"+raw_NEO_col.split("-")[1],"")+SNseries]= accum_NEO_0/count
-                # dfF0_NEO_zscores["avg_zscored_"+raw_NEO_col.replace("_"+raw_NEO_col.split("-")[1],"")+SNseries]=stats.zscore(accum_NEO_0/count)
-                dfF0_NEO_calibrated_zscores["avg_zscored_"+raw_NEO_col.replace("_"+raw_NEO_col.split("-")[1],"")+SNseries]=accum_NEO_1/count
+                Averaged_NEO_SN = Averaged_NEO_SN + "-" +str(int(raw_NEO_col.split("-")[1]))
+                accum_NEO_0 = accum_NEO_0 + DeltaF_f0_NEO_percent
+                accum_NEO_1 = accum_NEO_1 + DeltaF_f0_NEO_zscore
+                
+                dfF0_NEO["avg_pt_"+raw_NEO_col.replace("-"+raw_NEO_col.split("-")[1],"")+Averaged_NEO_SN]= accum_NEO_0/count_NEO_SNs
+                dfF0_NEO_zscores["avg_zs_"+raw_NEO_col.replace("-"+raw_NEO_col.split("-")[1],"")+Averaged_NEO_SN]=accum_NEO_1/count_NEO_SNs
                 
                 # Reset counter and accumulators
-                count = 1
+                count_NEO_SNs = 1
                 accum_NEO_0 = np.zeros_like(accum_NEO_0)
                 accum_NEO_1 = np.zeros_like(accum_NEO_1)
-                SNseries = ""
-                
-    # Save the calculated data into the same excel file
-    wb = openpyxl.load_workbook(xlsx_filepath)
-    if 'dfF0_ACSF' in wb.sheetnames:
-        del wb['dfF0_ACSF']
-        wb.save(xlsx_filepath)
+                Averaged_NEO_SN = ""
+    
+    return dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores
 
-    if 'dfF0_NEO' in wb.sheetnames:
-        del wb['dfF0_NEO']
-        wb.save(xlsx_filepath)
+def saveToAnalysis(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores):
+    if not os.path.exists(analysis_xlsx_path):
+        print("No excel file is chosen. Task cancelled")
+        return
 
-    if 'dfF0_ACSF_cal_zscores' in wb.sheetnames:
-        del wb['dfF0_ACSF_cal_zscores']
-        wb.save(xlsx_filepath)
+    if any(df.empty for df in [dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores]):
+        print("One or more DataFrames of results is empty. Cannot proceed with saving.")
+        return
 
-    if 'dfF0_NEO_cal_zscores' in wb.sheetnames:
-        del wb['dfF0_NEO_cal_zscores']
-        wb.save(xlsx_filepath)
+    sheets_to_be_updated = ['DeltaF_f0_ACSF', 'DeltaF_f0_NEO', 'DeltaF_f0_ACSF_zscores', 'DeltaF_f0_NEO_zscores']
+    dataframes_to_be_saved = {'DeltaF_f0_ACSF': dfF0_ACSF, 'DeltaF_f0_NEO': dfF0_NEO, 'DeltaF_f0_ACSF_zscores': dfF0_ACSF_zscores, 'DeltaF_f0_NEO_zscores': dfF0_NEO_zscores}
 
-    with pd.ExcelWriter(xlsx_filepath,mode="a") as f:
-        dfF0_ACSF.to_excel(f,sheet_name="dfF0_ACSF",index=False)
+    for sheet in sheets_to_be_updated:
+        with pd.ExcelWriter(analysis_xlsx_path, mode="a", if_sheet_exists="replace") as f:
+            dataframes_to_be_saved[sheet].to_excel(f, sheet_name=sheet, index=False)
 
-    with pd.ExcelWriter(xlsx_filepath,mode="a") as f:
-        dfF0_NEO.to_excel(f,sheet_name="dfF0_NEO",index=False)
+def plotting(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores):
+    if any(df.empty for df in [dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores]):
+        print("One or more DataFrames of results is empty. Cannot proceed with plotting.")
+        return
+
+    set_DeltaF_f0_in_percent = {"dfF0_ACSF": dfF0_ACSF, "dfF0_NEO": dfF0_NEO}
+
+    set_DeltaF_f0_in_zscores = {"dfF0_ACSF_cal_zscores": dfF0_ACSF_zscores, "dfF0_NEO_cal_zscores": dfF0_NEO_zscores}    
         
-    with pd.ExcelWriter(xlsx_filepath,mode="a") as f:
-        dfF0_ACSF_calibrated_zscores.to_excel(f,sheet_name="dfF0_ACSF_cal_zscores",index=False)
-        
-    with pd.ExcelWriter(xlsx_filepath,mode="a") as f:
-        dfF0_NEO_calibrated_zscores.to_excel(f,sheet_name="dfF0_NEO_cal_zscores",index=False)
-        
-
-    # Plot the data
-    set_dfF0 = {"dfF0_ACSF": dfF0_ACSF,
-                "dfF0_NEO": dfF0_NEO}
-
-    set_cal_zscores = {"dfF0_ACSF_cal_zscores": dfF0_ACSF_calibrated_zscores,
-                    "dfF0_NEO_cal_zscores": dfF0_NEO_calibrated_zscores}    
-        
-    results_0 = PlotResults(set_dfF0, title_left=r"ACSF_100%$\times \Delta F/F_0$", title_right=r"NEO_100%$\times \Delta F/F_0$", 
-                            ylim=[-0.5, 2], xlabel = 'time (sec.)', ylabel=r"$\Delta$"+"F/"+r"$F_0$"+"(%) (A.U.)")
+    results_0 = PlotResults(set_DeltaF_f0_in_percent, title_left=r"100%$\times \Delta F/F_0$ (ACSF)", title_right=r"100%$\times \Delta F/F_0$ (NEO)", 
+                            ylim=[-0.5, 2], xlabel = 'time (sec.)', ylabel=r"$\Delta$"+"F/"+r"$F_0$"+"(%)")
     results_0.show()
 
-    results_1 = PlotResults(set_cal_zscores, title_left=r"ACSF_Z-scores of $\Delta F/F_0$(Ratio)", title_right=r"NEO_Z-scores of $\Delta F/F_0$(Ratio)",
-                            ylim=[-4, 8], xlabel='time (sec.)', ylabel='Z-scores (A.U.)')
+    results_1 = PlotResults(set_DeltaF_f0_in_zscores, title_left=r"Z-scores of $\Delta F/F_0$ (ACSF)", title_right=r"Z-scores of $\Delta F/F_0$ (NEO)",
+                            ylim=[-10, 45], xlabel='time (sec.)', ylabel='Z-scores (A.U.)')
     results_1.show()
     app.exec_()
-else:
-    print("The file does not exist. Please check the file path.")
+    
+
+# Main
+raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO = readDataFromExcel()
+dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores = calcute_DeltaF_f0(raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO)
+saveToAnalysis(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores)
+plotting(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores)

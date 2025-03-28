@@ -54,29 +54,9 @@ print(tabulate(df_all_selected_files_NEO, headers='keys', tablefmt='pretty'))
 
 # Save the lists of selected files in xlsx format
 export_xlsx_filename = export_path / "all_picked_files.xlsx"
-if not os.path.exists(export_path):
-    os.mkdir(export_path)
-    
-if not os.path.exists(export_path / export_xlsx_filename):    
-    new_wb = openpyxl.Workbook()
-    new_wb.save(export_xlsx_filename)
-    
-to_be_updated_sheets = ['Group_ACSF', 'Group_NEO']
-to_be_updated_dataframes = {'Group_ACSF': df_all_selected_files_ACSF, 'Group_NEO': df_all_selected_files_NEO}
-
-for sheet in to_be_updated_sheets:
-    wb = openpyxl.load_workbook(export_xlsx_filename)
-    if sheet in wb.sheetnames:
-        del wb[sheet]
-        wb.save(export_xlsx_filename)
-
-    with pd.ExcelWriter(export_xlsx_filename,mode="a") as f:
-        to_be_updated_dataframes[sheet].to_excel(f,sheet_name=sheet, index=False)
-
-wb_final = openpyxl.load_workbook(export_xlsx_filename)
-if "Sheet" in wb_final.sheetnames:
-    del wb_final['Sheet']
-    wb_final.save(export_xlsx_filename)    
+with pd.ExcelWriter(export_xlsx_filename) as f:
+    df_all_selected_files_ACSF.to_excel(f,sheet_name="Group_ACSF",index=False)
+    df_all_selected_files_NEO.to_excel(f,sheet_name="Group_NEO",index=False)
 
 # Truncate and crop the imaging files
 # Load and trim the files

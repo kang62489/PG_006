@@ -112,12 +112,6 @@ for col_ACSF, col_NEO in zip(raw_ACSF.columns[1:], raw_NEO.columns[1:]):
     print("\nDATA ", col_ACSF, "and ", col_NEO, "are fitted")
     print("============================================================")
 
-with pd.ExcelWriter(os.path.join(export_path,'analysis.xlsx')) as f:
-    raw_ACSF.to_excel(f,sheet_name="raw_ACSF",index=False)
-    raw_NEO.to_excel(f,sheet_name='raw_NEO',index=False)
-    
-    fitted_ACSF.to_excel(f,sheet_name="fitted_ACSF",index=False)
-    fitted_NEO.to_excel(f,sheet_name="fitted_NEO",index=False)
 
 original_puffing_frame = 101
 
@@ -133,6 +127,14 @@ set_dfs["raw_ACSF"] = raw_ACSF
 set_dfs["raw_NEO"] = raw_NEO
 set_dfs["fitted_ACSF"] = fitted_ACSF
 set_dfs["fitted_NEO"] = fitted_NEO
+
+# Save the results to analysis.xlsx
+with pd.ExcelWriter(os.path.join(export_path,'analysis.xlsx')) as f:
+    raw_ACSF.to_excel(f,sheet_name="raw_ACSF",index=False)
+    raw_NEO.to_excel(f,sheet_name='raw_NEO',index=False)
+    
+    fitted_ACSF.to_excel(f,sheet_name="fitted_ACSF",index=False)
+    fitted_NEO.to_excel(f,sheet_name="fitted_NEO",index=False)
 
 # Plotting
 app = QApplication()
