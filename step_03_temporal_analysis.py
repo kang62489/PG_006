@@ -25,11 +25,25 @@ excelfile_analysis = GetPath(title="Please select the processed data of a xlsx f
                         filetype="excel")
 analysis_xlsx_path = excelfile_analysis.get_path()
 
+isAnalysisExcelFileLoaded = True
+areNecessarySheetsLoaded = True
+
 def readDataFromExcel():
     if not os.path.exists(analysis_xlsx_path):
         print("No excel file is chosen. Task cancelled")
+        global isAnalysisExcelFileLoaded
+        isAnalysisExcelFileLoaded = False
         return [], [], [], []
+    
 
+    wb = openpyxl.load_workbook(analysis_xlsx_path)
+    necessary_sheets = ['raw_ACSF', 'raw_NEO', 'fitted_ACSF', 'fitted_NEO']
+    if not all(sheet in wb.sheetnames for sheet in necessary_sheets):
+        print("The file does not have necessary sheets. Please check the file.")
+        global areNecessarySheetsLoaded
+        areNecessarySheetsLoaded = False
+        return [], [], [], []
+    
     # Read each tab as a dataframe of pandas
     raw_ACSF = pd.read_excel(analysis_xlsx_path, sheet_name="raw_ACSF")
     raw_NEO = pd.read_excel(analysis_xlsx_path, sheet_name="raw_NEO")
@@ -38,11 +52,6 @@ def readDataFromExcel():
     return raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO
 
 def calcute_DeltaF_f0(raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO):
-    # Check if any of the inputs is empty
-    if any(df.empty for df in [raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO]):
-        print("One or more input DataFrames is empty. Cannot proceed with calculations.")
-        return [], [], [], []
-    
     dfF0_ACSF = pd.DataFrame()
     dfF0_ACSF['Time'] = raw_ACSF["Time"]
 
@@ -152,26 +161,14 @@ def calcute_DeltaF_f0(raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO):
     return dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores
 
 def saveToAnalysis(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores):
-    if not os.path.exists(analysis_xlsx_path):
-        print("No excel file is chosen. Task cancelled")
-        return
-
-    if any(df.empty for df in [dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores]):
-        print("One or more DataFrames of results is empty. Cannot proceed with saving.")
-        return
-
-    sheets_to_be_updated = ['DeltaF_f0_ACSF', 'DeltaF_f0_NEO', 'DeltaF_f0_ACSF_zscores', 'DeltaF_f0_NEO_zscores']
-    dataframes_to_be_saved = {'DeltaF_f0_ACSF': dfF0_ACSF, 'DeltaF_f0_NEO': dfF0_NEO, 'DeltaF_f0_ACSF_zscores': dfF0_ACSF_zscores, 'DeltaF_f0_NEO_zscores': dfF0_NEO_zscores}
+    sheets_to_be_updated = ['DeltaF_f0_ACSF_percent', 'DeltaF_f0_NEO_percent', 'DeltaF_f0_ACSF_zscores', 'DeltaF_f0_NEO_zscores']
+    dataframes_to_be_saved = {'DeltaF_f0_ACSF_percent': dfF0_ACSF, 'DeltaF_f0_NEO_percent': dfF0_NEO, 'DeltaF_f0_ACSF_zscores': dfF0_ACSF_zscores, 'DeltaF_f0_NEO_zscores': dfF0_NEO_zscores}
 
     for sheet in sheets_to_be_updated:
         with pd.ExcelWriter(analysis_xlsx_path, mode="a", if_sheet_exists="replace") as f:
             dataframes_to_be_saved[sheet].to_excel(f, sheet_name=sheet, index=False)
 
 def plotting(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores):
-    if any(df.empty for df in [dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores]):
-        print("One or more DataFrames of results is empty. Cannot proceed with plotting.")
-        return
-
     set_DeltaF_f0_in_percent = {"dfF0_ACSF": dfF0_ACSF, "dfF0_NEO": dfF0_NEO}
 
     set_DeltaF_f0_in_zscores = {"dfF0_ACSF_cal_zscores": dfF0_ACSF_zscores, "dfF0_NEO_cal_zscores": dfF0_NEO_zscores}    
@@ -188,6 +185,10 @@ def plotting(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores):
 
 # Main
 raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO = readDataFromExcel()
-dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores = calcute_DeltaF_f0(raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO)
-saveToAnalysis(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores)
-plotting(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores)
+
+if isAnalysisExcelFileLoaded and areNecessarySheetsLoaded:
+    dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores = calcute_DeltaF_f0(raw_ACSF, raw_NEO, fitted_ACSF, fitted_NEO)
+    saveToAnalysis(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores)
+    plotting(dfF0_ACSF, dfF0_NEO, dfF0_ACSF_zscores, dfF0_NEO_zscores)
+
+

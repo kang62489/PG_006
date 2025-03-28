@@ -221,13 +221,29 @@ class PlotResults(QMainWindow):
                 layout_rightWindow = QVBoxLayout()
                 
                 subWindow_1 = MplCanvas()
-                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
-                self.df_loaded[2].iloc[row:row+1, :].plot(ax=subWindow_1.axes, x=self.df_columns[2][0], y=self.df_columns[2][1], marker='x', markersize=10, color='r')
+                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_left, grid=True)
+                # self.df_loaded[2].iloc[row:row+1, :].plot(ax=subWindow_1.axes, x=self.df_columns[2][0], y=self.df_columns[2][1],
+                #                                           annotate=True, fmt='.2f', marker='x', markersize=10, color='r')
+                peak_data = self.df_loaded[2].iloc[row:row+1, :]
+                x_peak_1 = peak_data[self.df_columns[2][0]].values[0]
+                y_peak_1 = peak_data[self.df_columns[2][1]].values[0]
+                
+                subWindow_1.axes.plot(x_peak_1, y_peak_1, 'rx', markersize=10)
+                subWindow_1.axes.annotate(f'{y_peak_1:.2f}', xy=(x_peak_1, y_peak_1), xytext=(-10, 8),textcoords='offset points',color='r')
                 toolbar_1 = NavigationToolbar(subWindow_1, self)
                 
                 subWindow_2 = MplCanvas()
-                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
-                self.df_loaded[2].iloc[row:row+1, :].plot(ax=subWindow_2.axes, x=self.df_columns[2][2], y=self.df_columns[2][3], marker='x', markersize=10, color='r')
+                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_right, grid=True)
+                # self.df_loaded[2].iloc[row:row+1, :].plot(ax=subWindow_2.axes, x=self.df_columns[2][2], y=self.df_columns[2][3],
+                #                                           annotate=True, fmt='.2f', marker='x', markersize=10, color='r')
+                
+                x_peak_2 = peak_data[self.df_columns[2][2]].values[0]
+                y_peak_2 = peak_data[self.df_columns[2][3]].values[0]
+        
+                subWindow_2.axes.plot(x_peak_2, y_peak_2, 'rx', markersize=10)
+                subWindow_2.axes.annotate(f'{y_peak_2:.2f}', xy=(x_peak_2, y_peak_2), xytext=(-10, 8), textcoords='offset points',color='r')
                 toolbar_2 = NavigationToolbar(subWindow_2, self)
                 
                 layout_leftWindow.addWidget(toolbar_1)
