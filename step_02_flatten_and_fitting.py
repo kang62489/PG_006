@@ -1,6 +1,6 @@
 ## Author: Kang
-## Last Update: 2025-Jan-29
-## Purpose: To analyze temporal data of imaging data
+## Last Update: 2025-Mar-28
+## Purpose: To flatten and fit the temporal sequences derived from the preprocessed images (truncate and crop)
 
 ## Modules
 import os
@@ -18,8 +18,8 @@ from tabulate import tabulate
 from PySide6.QtWidgets import QApplication
 from classes.plot_results import PlotResults
 
-## Set directories for import and export images
-data_path = Path(__file__).parent / "Outputs"
+## File I/O
+preprocessed_imaging_sequences_path = Path(__file__).parent / "Outputs"
 export_path = Path(__file__).parent / "Outputs"
 if not os.path.exists(export_path):
     os.mkdir(export_path)
@@ -27,20 +27,22 @@ if not os.path.exists(export_path):
 ## Sampling Rates: 50 ms = 20 Hz
 fs = 20
 
-## Set time label by frames of images
+## Convert frames to time
 cut_start = 10
 cut_end = 400
-time = np.arange(10, 400)/fs
+frame_start = cut_start + 1
+frame_end = cut_end + 1
+time = (np.arange(frame_start, frame_end))/fs
 
 ## Pick up folders of images for analysis
-ROIs = ["512"]
-for ROI in ROIs:
-    lst_prep_folders_ACSF = [f for f in next(os.walk(os.path.join(data_path)))[1] if ("Preprocessed"  in f) & (ROI in f) & ("ACSF" in f)]
-    lst_prep_folders_NEO = [f for f in next(os.walk(os.path.join(data_path)))[1] if ("Preprocessed"  in f) & (ROI in f) & ("NEO" in f)]
+lst_ROI_sizes = ["512"]
+for ROI in lst_ROI_sizes:
+    lst_preprossed_folders_ACSF = [f for f in next(os.walk(os.path.join(preprocessed_imaging_sequences_path)))[1] if ("Preprocessed"  in f) & (ROI in f) & ("ACSF" in f)]
+    lst_preprossed_folders_NEO = [f for f in next(os.walk(os.path.join(preprocessed_imaging_sequences_path)))[1] if ("Preprocessed"  in f) & (ROI in f) & ("NEO" in f)]
 
-for folder_ACSF, folder_NEO in zip(lst_prep_folders_ACSF, lst_prep_folders_NEO):
-    lst_files_ACSF =glob.glob(os.path.join(data_path, folder_ACSF,"*.tif"))
-    lst_files_NEO = glob.glob(os.path.join(data_path, folder_NEO,"*.tif"))
+for folder_ACSF, folder_NEO in zip(lst_preprossed_folders_ACSF, lst_preprossed_folders_NEO):
+    lst_files_ACSF =glob.glob(os.path.join(preprocessed_imaging_sequences_path, folder_ACSF,"*.tif"))
+    lst_files_NEO = glob.glob(os.path.join(preprocessed_imaging_sequences_path, folder_NEO,"*.tif"))
 
 print("number of files in ACSF: ", len(lst_files_ACSF))
 print(lst_files_ACSF)
@@ -57,8 +59,8 @@ raw_NEO = pd.DataFrame()
 raw_ACSF['Time'] = time
 raw_NEO['Time'] = time
 
-## Load imaging trains and calculate averages of each frame
-## Save each train into a column in each dataframe
+## Load every imaging sequence and calculate average of each frame
+## Store each temporal sequence in each column of corresponding dataframe
 for file_ACSF, file_NEO in zip(lst_files_ACSF, lst_files_NEO):
     im_ACSF = imageio.imread(file_ACSF)
     im_NEO = imageio.imread(file_NEO)
@@ -75,22 +77,21 @@ for file_ACSF, file_NEO in zip(lst_files_ACSF, lst_files_NEO):
 # Prepare empty dataframes for saving fitted data
 fitted_ACSF = pd.DataFrame()
 fitted_NEO = pd.DataFrame()
-df_monoExp_coef = pd.DataFrame()
 
 # Insert time seqence for easily ploting in the output excel file_ACSF
 fitted_ACSF['Time'] = time
 fitted_NEO['Time'] = time
 
 
-# Masking the frames of ONSET of the puffing
+# Masking the frames of ONSET of the puffing (100 frames, 5 seconds)
 mask_start = 90
 mask_end = 190
 masked_ACSF = raw_ACSF.loc[(raw_ACSF["Time"]<mask_start*0.05) | (raw_ACSF["Time"]>= mask_end*0.05)]
 masked_NEO = raw_NEO.loc[(raw_NEO["Time"]<mask_start*0.05) | (raw_NEO["Time"]>= mask_end*0.05)]
 
 # Define parameters for B-Spline
-knots = 9
-xdata_new = np.linspace(0,1,knots+2)[1:-1]
+knots = 21
+xdata_new = np.linspace(0,1,knots+2)[1::4]
 xdata = masked_ACSF["Time"]
 q_knots = np.quantile(xdata, xdata_new)
 smooth = 3
@@ -118,6 +119,15 @@ with pd.ExcelWriter(os.path.join(export_path,'analysis.xlsx')) as f:
     fitted_ACSF.to_excel(f,sheet_name="fitted_ACSF",index=False)
     fitted_NEO.to_excel(f,sheet_name="fitted_NEO",index=False)
 
+original_puffing_frame = 101
+
+original_puffing_timepoint = original_puffing_frame/fs
+
+raw_ACSF["Time"] = raw_ACSF["Time"] - original_puffing_timepoint
+raw_NEO["Time"] = raw_NEO["Time"] - original_puffing_timepoint
+fitted_ACSF["Time"] = fitted_ACSF["Time"] - original_puffing_timepoint
+fitted_NEO["Time"] = fitted_NEO["Time"] - original_puffing_timepoint
+
 set_dfs = {}
 set_dfs["raw_ACSF"] = raw_ACSF
 set_dfs["raw_NEO"] = raw_NEO
@@ -126,7 +136,8 @@ set_dfs["fitted_NEO"] = fitted_NEO
 
 # Plotting
 app = QApplication()
-window = PlotResults(set_dfs, title_left="ACh puffed in Normal ACSF solution", title_right="ACh puffed in NEO presented ACSF solution")
+window = PlotResults(set_dfs, title_left="ACh puffed in Normal ACSF solution", title_right="ACh puffed in NEO presented ACSF solution",
+                     xlabel='time (sec.)', ylabel='counts')
 
 window.show()
 app.exec()

@@ -1,6 +1,6 @@
 ## Author: Kang
 ## Last Update: 2025-Mar-28
-## Purpose: To analyze the specificity of the iAChSnFR and Integrate the old codes
+## Purpose: To preprocess the raw imaging sequences of ACh fluorescence
 
 # Modules
 import os
@@ -10,7 +10,7 @@ import openpyxl
 from pathlib import Path
 from tabulate import tabulate
 from rich import print
-from classes.dialog_INQUIARY import INQUIRY
+from classes.dialog_Inquiry import Inquiry
 from PySide6.QtWidgets import QApplication
 
 from functions.truncate_and_crop import truncate_and_crop
@@ -94,7 +94,7 @@ for r in ROI_sizes:
         if os.path.exists(export_path / outdir):
             title = "Warning"
             message = f"Folder {outdir} already exists. Do you want to continue the process?"
-            dlg_checkContinue = INQUIRY(title, message)
+            dlg_checkContinue = Inquiry(title, message)
             if dlg_checkContinue.exec():
                 truncate_and_crop(selected_folders, output_foldername, project_path, export_path, df_all_selected_files_ACSF, df_all_selected_files_NEO, ROI_coords, cut_start, cut_end, r)
             else:

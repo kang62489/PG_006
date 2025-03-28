@@ -4,7 +4,7 @@
 
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
-class INQUIRY(QDialog):
+class Inquiry(QDialog):
     """Generate a yes/no dialog"""
     def __init__(self, title="Dialog", msg="Question"):
         super().__init__()

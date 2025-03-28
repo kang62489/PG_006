@@ -19,7 +19,7 @@ from matplotlib.backends.backend_qtagg import (
 matplotlib.use('QtAgg')
 
 class MplCanvas(FigureCanvasQTAgg):
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
+    def __init__(self, parent=None, width=6, height=4, dpi=100):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super().__init__(fig)
@@ -186,13 +186,17 @@ class PlotResults(QMainWindow):
                 layout_rightWindow = QVBoxLayout()
                 
                 subWindow_1 = MplCanvas()
-                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
-                self.df_loaded[2].plot(ax=subWindow_1.axes, x=self.df_columns[2][0], y=col_1, kind='line', ylim=self.ylim, title=self.title_left)
+                self.df_loaded[0].plot(ax=subWindow_1.axes, x=self.df_columns[0][0], y=col_1, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_left, grid=True, label=col_1)
+                self.df_loaded[2].plot(ax=subWindow_1.axes, x=self.df_columns[2][0], y=col_1, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_left, grid=True, label=col_1+ "(fitted)")
                 toolbar_1 = NavigationToolbar(subWindow_1, self)
                 
                 subWindow_2 = MplCanvas()
-                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
-                self.df_loaded[3].plot(ax=subWindow_2.axes, x=self.df_columns[3][0], y=col_2, kind='line', ylim=self.ylim, title=self.title_right)
+                self.df_loaded[1].plot(ax=subWindow_2.axes, x=self.df_columns[1][0], y=col_2, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_right, grid=True, label=col_2)
+                self.df_loaded[3].plot(ax=subWindow_2.axes, x=self.df_columns[3][0], y=col_2, kind='line',
+                                       ylim=self.ylim, xlabel=self.xlabel, ylabel=self.ylabel, title=self.title_right, grid=True, label=col_2+ "(fitted)")
                 toolbar_2 = NavigationToolbar(subWindow_2, self)
                 
                 layout_leftWindow.addWidget(toolbar_1)
