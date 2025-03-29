@@ -14,6 +14,7 @@ from classes.dialog_Inquiry import Inquiry
 from PySide6.QtWidgets import QApplication
 
 from functions.truncate_and_crop import truncate_and_crop
+from classes.dialog_Inquiry import Inquiry
 
 # Set event handler for GUIs (dialogs)
 app = QApplication(sys.argv)
@@ -66,19 +67,52 @@ ROI_sizes = [512]
 center_x = 1792
 center_y = 1024
 
-for r in ROI_sizes:
-    output_foldername = ["Preprocessed_ACSF_"+str(r),"Preprocessed_NEO_"+str(r)]
-    ROI_coords = [int(center_y-(r/2)), int(center_y+(r/2)), int(center_x-(r/2)), int(center_x+(r/2))]
-    for outdir in output_foldername:
-        # Check if preprocessing folder exists
-        if os.path.exists(export_path / outdir):
-            title = "Warning"
-            message = f"Folder {outdir} already exists. Do you want to continue the process?"
-            dlg_checkContinue = Inquiry(title, message)
-            if dlg_checkContinue.exec():
-                truncate_and_crop(selected_folders, output_foldername, project_path, export_path, df_all_selected_files_ACSF, df_all_selected_files_NEO, ROI_coords, cut_start, cut_end, r)
+def check_preprocessed_folders():
+    # Get all folders in the Outputs directory
+    if not os.path.exists(export_path):
+        return False
+        
+    existing_folders = [f for f in os.listdir(export_path) 
+                       if os.path.isdir(export_path / f)]
+    
+    # Check if any folder contains both "Preprocessed" and ROI size
+    has_preprocessed = any(
+        "Preprocessed" in folder and 
+        any(str(size) in folder for size in ROI_sizes)
+        for folder in existing_folders
+    )
+    
+    if has_preprocessed:
+        print(f"Found existing preprocessed folders with ROI sizes: {ROI_sizes}")
+        return True
+    return False
+
+
+def preprocess():
+    # First check if preprocessed folders exist
+    if check_preprocessed_folders():
+        title = "Warning"
+        message = "Preprocessed folders already exist. Do you want to continue and overwrite?"
+        dlg_checkContinue = Inquiry(title, message)
+        if not dlg_checkContinue.exec():
+            print("Preprocessing has been canceled.")
+            return
+
+    for r in ROI_sizes:
+        output_foldername = ["Preprocessed_ACSF_"+str(r),"Preprocessed_NEO_"+str(r)]
+        ROI_coords = [int(center_y-(r/2)), int(center_y+(r/2)), int(center_x-(r/2)), int(center_x+(r/2))]
+        for outdir in output_foldername:
+            # Check if preprocessing folder exists
+            if os.path.exists(export_path / outdir):
+                title = "Warning"
+                message = f"Folder {outdir} already exists. Do you want to continue the process?"
+                dlg_checkContinue = Inquiry(title, message)
+                if dlg_checkContinue.exec():
+                    truncate_and_crop(selected_folders, output_foldername, project_path, export_path, df_all_selected_files_ACSF, df_all_selected_files_NEO, ROI_coords, cut_start, cut_end, r)
+                else:
+                    print(f"Preprocessing has been canceled or skipped.")
+                    break
             else:
-                print(f"Preprocessing has been canceled or skipped.")
-                break
-        else:
-            truncate_and_crop(selected_folders, output_foldername, project_path, export_path, df_all_selected_files_ACSF, df_all_selected_files_NEO, ROI_coords, cut_start, cut_end, r)
+                truncate_and_crop(selected_folders, output_foldername, project_path, export_path, df_all_selected_files_ACSF, df_all_selected_files_NEO, ROI_coords, cut_start, cut_end, r)
+
+preprocess()
